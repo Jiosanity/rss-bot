@@ -25,8 +25,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 读取配置文件
     tracing::info!("Loading configuration files");
-    let css_rules = get_css_rules("./config/css_rules.yaml")?;
-    let fc_settings = get_fc_settings("./config/settings.yaml")?;
+    
+    // 获取当前工作目录，构建配置文件的绝对路径
+    // 这样可以适应不同的环境，如GitHub Action
+    let current_dir = std::env::current_dir()?;
+    let css_rules_path = current_dir.join("config").join("css_rules.yaml");
+    let settings_path = current_dir.join("config").join("settings.yaml");
+    
+    tracing::info!("CSS rules path: {}", css_rules_path.display());
+    tracing::info!("Settings path: {}", settings_path.display());
+    
+    let css_rules = get_css_rules(css_rules_path.to_str().ok_or("Failed to convert path to string")?)?;
+    let fc_settings = get_fc_settings(settings_path.to_str().ok_or("Failed to convert path to string")?)?;
     
     // 构建HTTP客户端
     let client = build_client(10, 3);
