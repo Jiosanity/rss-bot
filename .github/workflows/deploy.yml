@@ -19,10 +19,18 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
-      # 构建项目
-      - name: Build project
+      # 检查目录结构并构建项目
+      - name: Check directory structure and build project
         run: |
-          cargo build --release
+          echo "当前工作目录: $(pwd)"
+          ls -la
+          if [ -f "Cargo.toml" ]; then
+            echo "找到Cargo.toml，开始构建..."
+            cargo build --release
+          else
+            echo "错误：未找到Cargo.toml文件"
+            exit 1
+          fi
       
       # 配置环境变量（可选，用于RSS源等敏感信息）
       - name: Configure environment
