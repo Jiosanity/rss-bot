@@ -7,6 +7,11 @@ on:
   # 允许手动触发
   workflow_dispatch:
 
+# 添加权限设置以确保工作流可以正常执行
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   generate-and-deploy:
     runs-on: ubuntu-latest
