@@ -22,7 +22,6 @@ jobs:
       # 构建项目
       - name: Build project
         run: |
-          cd simple_edition
           cargo build --release
       
       # 配置环境变量（可选，用于RSS源等敏感信息）
@@ -34,13 +33,11 @@ jobs:
       # 运行程序生成rss.json
       - name: Generate rss.json
         run: |
-          cd simple_edition
           cargo run
       
       # 验证rss.json文件是否生成
       - name: Verify rss.json
         run: |
-          cd simple_edition
           if [ -f "rss.json" ]; then
             echo "rss.json 生成成功"
             ls -la rss.json
