@@ -7,11 +7,6 @@ on:
   # 允许手动触发
   workflow_dispatch:
 
-# 添加权限设置以确保工作流可以正常执行
-permissions:
-  contents: read
-  actions: write
-
 jobs:
   generate-and-deploy:
     runs-on: ubuntu-latest
@@ -27,30 +22,16 @@ jobs:
       # 检查目录结构并构建项目
       - name: Check directory structure and build project
         run: |
-          # 添加详细的调试信息
-          echo "=== 环境信息调试 ==="
-          echo "操作系统: $(uname -a)"
-          echo "当前用户: $(whoami)"
-          echo "=== 工作目录调试 ==="
           echo "当前工作目录: $(pwd)"
-          echo "工作目录绝对路径: $(realpath .)"
-          echo "=== 文件系统调试 ==="
           ls -la
           # 列出完整目录结构以方便调试
-          echo "=== 完整文件结构 ==="
           find . -type f | sort
-          echo "=== 权限调试 ==="
-          ls -la .github/workflows/
-          echo "=== Cargo.toml 检查 ==="
           if [ -f "Cargo.toml" ]; then
             echo "找到Cargo.toml，开始构建..."
-            cat Cargo.toml
-            echo "=== 构建开始 ==="
             cargo build --release
             # 检查构建是否成功
             if [ $? -eq 0 ]; then
               echo "构建成功！"
-              ls -la target/release/
             else
               echo "构建失败！"
               exit 1
@@ -121,12 +102,12 @@ jobs:
       #       -F "file=@rss.json" \
       #       ${{ secrets.API_ENDPOINT }}
       
-      # 通知（可选，只有当设置了SLACK_WEBHOOK时才发送通知）
+      # 通知（可选，确保设置了正确的secrets）
       - name: Send notification
-        if: always() && secrets.SLACK_WEBHOOK != ''
+        if: success() || failure()
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK || '' }}
           SLACK_TITLE: "RSS.json Deployment"
           SLACK_MESSAGE: ${{ job.status == 'success' && '部署成功！' || '部署失败！' }}
           SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
