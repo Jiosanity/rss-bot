@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime};
-use chrono::{DateTime, FixedOffset, Utc};
-use nipper::{Document, Selector};
+use chrono::{FixedOffset, Utc};
+use nipper::Document;
 use reqwest::Client;
-use url::{Url, ParseError};
+use url::Url;
 use crate::models::{Friends, PostMeta};
 
 const BEIJING_OFFSET: Option<FixedOffset> = FixedOffset::east_opt(8 * 3600);
@@ -24,13 +23,12 @@ pub async fn crawl_link_page(
     if let Some(theme_rules) = css_rules.get("link_page_rules") {
         for (theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
             if let Some(author_selector) = rules["author"].as_str() {
-                let selector = Selector::from_str(author_selector)?;
-                let authors = doc.select(selector);
+                    let authors = doc.select(author_selector);
                 
-                if authors.len() > 0 {
+                if authors.length() > 0 {
                     // 找到匹配的主题规则
-                    let link_selector = Selector::from_str(rules["link"].as_str().unwrap_or(".friend-name a"))?;
-                    let avatar_selector = Selector::from_str(rules["avatar"].as_str().unwrap_or(".avatar img"))?;
+                    let link_selector = rules["link"].as_str().unwrap_or(".friend-name a");
+                    let avatar_selector = rules["avatar"].as_str().unwrap_or(".avatar img");
                     
                     let links = doc.select(link_selector);
                     let avatars = doc.select(avatar_selector);
@@ -40,25 +38,27 @@ pub async fn crawl_link_page(
                     
                     // 合并数据
                     let mut author_map = HashMap::new();
-                    for (i, author) in authors.enumerate() {
+                    authors.each(|i, author| {
                         author_map.insert(i, decode_html_entities(author.text().trim()));
-                    }
+                    });
                     
                     let mut link_map = HashMap::new();
-                    for (i, link) in links.enumerate() {
+                    links.each(|i, link| {
                         if let Some(href) = link.attr("href") {
-                            let full_url = resolve_relative_url(href, link_page)?;
-                            link_map.insert(i, full_url);
+                            if let Ok(full_url) = resolve_relative_url(href, link_page) {
+                                link_map.insert(i, full_url);
+                            }
                         }
-                    }
+                    });
                     
                     let mut avatar_map = HashMap::new();
-                    for (i, avatar) in avatars.enumerate() {
+                    avatars.each(|i, avatar| {
                         if let Some(src) = avatar.attr("src") {
-                            let full_url = resolve_relative_url(src, link_page)?;
-                            avatar_map.insert(i, full_url);
+                            if let Ok(full_url) = resolve_relative_url(src, link_page) {
+                                avatar_map.insert(i, full_url);
+                            }
                         }
-                    }
+                    });
                     
                     // 创建Friends对象
                     let max_index = std::cmp::max(
@@ -118,36 +118,36 @@ pub async fn crawl_post_page(
     if let Some(theme_rules) = css_rules.get("post_page_rules") {
         for (theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
             if let Some(title_selector) = rules["title"].as_str() {
-                let selector = Selector::from_str(title_selector)?;
-                let titles = doc.select(selector);
+                    let titles = doc.select(title_selector);
                 
-                if titles.len() > 0 {
+                if titles.length() > 0 {
                     // 找到匹配的主题规则
-                    let link_selector = Selector::from_str(rules["link"].as_str().unwrap_or(".article-title a"))?;
-                    let created_selector = Selector::from_str(rules["created"].as_str().unwrap_or(".article-date"))?;
+                    let link_selector = rules["link"].as_str().unwrap_or(".article-title a");
+                    let created_selector = rules["created"].as_str().unwrap_or(".article-date");
                     
                     let links = doc.select(link_selector);
                     let created_times = doc.select(created_selector);
                     
                     // 合并数据
                     let mut title_map = HashMap::new();
-                    for (i, title) in titles.enumerate() {
+                    titles.each(|i, title| {
                         title_map.insert(i, decode_html_entities(title.text().trim()));
-                    }
+                    });
                     
                     let mut link_map = HashMap::new();
-                    for (i, link_elem) in links.enumerate() {
+                    links.each(|i, link_elem| {
                         if let Some(href) = link_elem.attr("href") {
-                            let full_url = resolve_relative_url(href, link)?;
-                            link_map.insert(i, full_url);
+                            if let Ok(full_url) = resolve_relative_url(href, link) {
+                                link_map.insert(i, full_url);
+                            }
                         }
-                    }
+                    });
                     
                     let mut time_map = HashMap::new();
-                    for (i, time_elem) in created_times.enumerate() {
+                    created_times.each(|i, time_elem| {
                         let time_str = clean_time_string(time_elem.text().trim());
                         time_map.insert(i, time_str);
-                    }
+                    });
                     
                     // 创建PostMeta对象
                     let max_index = std::cmp::max(
@@ -201,7 +201,7 @@ pub async fn crawl_post_page_feed(
     // 尝试RSS格式
     let items = doc.select("item");
     
-    for item in items {
+    items.each(|_, item| {
         let title = item.select("title").text().trim().to_string();
         let link = item.select("link").text().trim().to_string();
         
@@ -234,14 +234,16 @@ pub async fn crawl_post_page_feed(
             }
         }
         
-        posts.push(PostMeta {
-            title: decode_html_entities(&title),
-            link: resolve_relative_url(&link, feed_url)?,
-            created: created.clone(),
-            updated: created,
-            content, // 添加文章正文内容
-        });
-    }
+        if let Ok(resolved_link) = resolve_relative_url(&link, feed_url) {
+            posts.push(PostMeta {
+                title: decode_html_entities(&title),
+                link: resolved_link,
+                created: created.clone(),
+                updated: created,
+                content, // 添加文章正文内容
+            });
+        }
+    });
     
     Ok(posts)
 }
