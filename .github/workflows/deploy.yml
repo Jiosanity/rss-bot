@@ -27,6 +27,13 @@ jobs:
           if [ -f "Cargo.toml" ]; then
             echo "找到Cargo.toml，开始构建..."
             cargo build --release
+            # 检查构建是否成功
+            if [ $? -eq 0 ]; then
+              echo "构建成功！"
+            else
+              echo "构建失败！"
+              exit 1
+            fi
           else
             echo "错误：未找到Cargo.toml文件"
             exit 1
@@ -63,7 +70,7 @@ jobs:
       #     username: ${{ secrets.SERVER_USERNAME }}
       #     key: ${{ secrets.SSH_PRIVATE_KEY }}
       #     port: ${{ secrets.SERVER_PORT || '22' }}
-      #     source: simple_edition/rss.json
+      #     source: rss.json
       #     target: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
       #     overwrite: true
       
@@ -74,7 +81,7 @@ jobs:
       #     username: ${{ secrets.SERVER_USERNAME }}
       #     server: ${{ secrets.SERVER_HOST }}
       #     ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     local_path: simple_edition/rss.json
+      #     local_path: rss.json
       #     remote_path: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
       
       # 方法3：使用curl上传到API端点
@@ -82,15 +89,15 @@ jobs:
       #   run: |
       #     curl -X POST \
       #       -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
-      #       -F "file=@simple_edition/rss.json" \
+      #       -F "file=@rss.json" \
       #       ${{ secrets.API_ENDPOINT }}
       
-      # 通知（可选）
+      # 通知（可选，确保设置了正确的secrets）
       - name: Send notification
         if: success() || failure()
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK || '' }}
           SLACK_TITLE: "RSS.json Deployment"
           SLACK_MESSAGE: ${{ job.status == 'success' && '部署成功！' || '部署失败！' }}
           SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}

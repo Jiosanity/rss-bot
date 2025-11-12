@@ -25,7 +25,7 @@ pub async fn start_crawl_linkpages(
     
     if fc_settings.enable_link_page {
         for link_page in &fc_settings.link_pages {
-            match crawl_link_page(link_page, &serde_yaml::Value::Null, client).await {
+            match crawl_link_page(link_page, &css_rules.link_page_rules, client).await {
                 Ok(friends) => {
                     // 过滤掉被屏蔽的站点
                     let filtered_friends: Vec<Friends> = friends
@@ -65,7 +65,7 @@ pub async fn start_crawl_postpages(
         return Ok(Vec::new());
     }
     
-    crawl_post_page(link, fc_settings, &custom_rss, &serde_yaml::Value::Null, client).await
+    crawl_post_page(link, fc_settings, &custom_rss, &css_rules.post_page_rules, client).await
 }
 
 /// 从JSON API或文件获取友链列表

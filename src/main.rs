@@ -1,3 +1,9 @@
+// 导出需要的类型和函数
+mod models;
+mod config;
+mod crawler;
+mod downloader;
+
 use std::fs::File;
 use chrono::{Utc, DateTime, FixedOffset};
 use tokio::task;
@@ -178,9 +184,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(())
 }
-
-// 导出需要的类型和函数
-mod models;
-mod config;
-mod crawler;
-mod downloader;
