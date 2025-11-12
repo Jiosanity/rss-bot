@@ -16,9 +16,10 @@ const BEIJING_OFFSET: Option<FixedOffset> = FixedOffset::east_opt(8 * 3600);
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化日志
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)?;
     
     let now = Utc::now().with_timezone(&BEIJING_OFFSET.unwrap());
     tracing::info!("Starting hexo-circle-of-friends-simple at {}", now.format("%Y-%m-%d %H:%M:%S"));
@@ -122,7 +123,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &client_clone,
             ).await;
             
-            (friend_clone, result)
+            // 将错误转换为字符串以满足Send trait要求
+            let result_str = match result {
+                Ok(posts) => Ok(posts),
+                Err(e) => Err(format!("{:?}", e)),
+            };
+            
+            (friend_clone, result_str)
         });
         
         tasks.push(task);
@@ -135,8 +142,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     for task in tasks {
         match task.await {
-            Ok((friend, result)) => {
-                match result {
+            Ok((friend, result_str)) => {
+                match result_str {
                     Ok(posts) => {
                         if !posts.is_empty() {
                             active_num += 1;
@@ -150,8 +157,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     created_at: now.format("%Y-%m-%d %H:%M:%S").to_string(),
                                 })
                                 .collect();
+                            let posts_count = posts_with_author.len();
                             success_posts.extend(posts_with_author);
-                            tracing::info!("Crawled {} posts from {}", posts_with_author.len(), friend.name);
+                            tracing::info!("Crawled {} posts from {}", posts_count, friend.name);
                         } else {
                             error_num += 1;
                             tracing::warn!("No posts found for {}", friend.name);

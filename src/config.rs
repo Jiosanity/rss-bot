@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 use serde::{Serialize, Deserialize};
-use yaml_rust::YamlLoader;
+use serde_yaml;
 
 /// CSS选择器规则
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,15 +32,11 @@ pub struct FcSettings {
 
 /// 从YAML文件读取CSS规则
 pub fn get_css_rules(path: &str) -> Result<CssRules, Box<dyn std::error::Error>> {
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    let file = File::open(path)?;
+    let rules: serde_yaml::Value = serde_yaml::from_reader(file)?;
     
-    let yaml = YamlLoader::load_from_str(&contents)?;
-    let yaml = &yaml[0];
-    
-    let post_page_rules = serde_yaml::to_value(yaml["post_page_rules"].clone())?;
-    let link_page_rules = serde_yaml::to_value(yaml["link_page_rules"].clone())?;
+    let post_page_rules = rules["post_page_rules"].clone();
+    let link_page_rules = rules["link_page_rules"].clone();
     
     Ok(CssRules {
         post_page_rules,
@@ -50,12 +46,8 @@ pub fn get_css_rules(path: &str) -> Result<CssRules, Box<dyn std::error::Error>>
 
 /// 从YAML文件读取FC配置
 pub fn get_fc_settings(path: &str) -> Result<FcSettings, Box<dyn std::error::Error>> {
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    
-    let yaml = YamlLoader::load_from_str(&contents)?;
-    let yaml = &yaml[0];
+    let file = File::open(path)?;
+    let yaml: serde_yaml::Value = serde_yaml::from_reader(file)?;
     
     // 友链页配置 - 新格式
     let enable_link_page = true; // 默认启用
