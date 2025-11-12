@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Read;
 use serde::{Serialize, Deserialize};
 use serde_yaml;
 
@@ -54,7 +53,7 @@ pub fn get_fc_settings(path: &str) -> Result<FcSettings, Box<dyn std::error::Err
     let mut link_pages = Vec::new();
     
     // 从LINK字段读取友链页地址
-    if let Some(link_array) = yaml["LINK"].as_vec() {
+    if let Some(link_array) = yaml["LINK"].as_sequence() {
         for link_item in link_array {
             if let Some(link) = link_item["link"].as_str() {
                 link_pages.push(link.to_string());
@@ -68,10 +67,10 @@ pub fn get_fc_settings(path: &str) -> Result<FcSettings, Box<dyn std::error::Err
     let json_api_or_path = friends_links["json_api_or_path"].as_str().unwrap_or("")
         .to_string();
     
-    let list = friends_links["list"].as_vec().unwrap_or(&vec![])
+    let list = friends_links["list"].as_sequence().unwrap_or(&vec![])
         .iter()
         .map(|item| {
-            item.as_vec().unwrap_or(&vec![])
+            item.as_sequence().unwrap_or(&vec![])
                 .iter()
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
@@ -80,7 +79,7 @@ pub fn get_fc_settings(path: &str) -> Result<FcSettings, Box<dyn std::error::Err
         .collect();
     
     // 屏蔽站点
-    let block_sites = yaml["BLOCK_SITE"].as_vec().unwrap_or(&vec![])
+    let block_sites = yaml["BLOCK_SITE"].as_sequence().unwrap_or(&vec![])
         .iter()
         .filter_map(|v| v.as_str())
         .map(|s| s.to_string())

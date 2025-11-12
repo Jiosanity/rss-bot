@@ -3,10 +3,9 @@ use reqwest::Client;
 use crate::config::{FcSettings, CssRules};
 use crate::crawler::{crawl_link_page, crawl_post_page};
 use crate::models::{Friends, PostMeta};
-use tokio::task;
 
 /// 构建HTTP客户端
-pub fn build_client(timeout: u64, retry_count: u32) -> Client {
+pub fn build_client(timeout: u64, _retry_count: u32) -> Client {
     Client::builder()
         .timeout(Duration::from_secs(timeout))
         .connect_timeout(Duration::from_secs(5))

@@ -5,7 +5,7 @@ mod crawler;
 mod downloader;
 
 use std::fs::File;
-use chrono::{Utc, DateTime, FixedOffset};
+use chrono::{Utc, FixedOffset};
 use tokio::task;
 use crate::config::{get_css_rules, get_fc_settings};
 use crate::downloader::{build_client, start_crawl_linkpages, start_crawl_postpages, start_get_friends_links_from_json};

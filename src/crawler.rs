@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use chrono::{FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use nipper::Document;
 use reqwest::Client;
 use url::Url;
@@ -21,7 +21,7 @@ pub async fn crawl_link_page(
     
     // 尝试不同主题的CSS选择器规则
     if let Some(theme_rules) = css_rules.get("link_page_rules") {
-        for (theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
+        for (_theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
             if let Some(author_selector) = rules["author"].as_str() {
                     let authors = doc.select(author_selector);
                 
@@ -38,27 +38,33 @@ pub async fn crawl_link_page(
                     
                     // 合并数据
                     let mut author_map = HashMap::new();
-                    authors.each(|i, author| {
-                        author_map.insert(i, decode_html_entities(author.text().trim()));
-                    });
+                    for i in 0..authors.length() {
+                        if let Some(author) = authors.get(i) {
+                            author_map.insert(i, decode_html_entities(author.text().trim()));
+                        }
+                    }
                     
                     let mut link_map = HashMap::new();
-                    links.each(|i, link| {
-                        if let Some(href) = link.attr("href") {
-                            if let Ok(full_url) = resolve_relative_url(href, link_page) {
-                                link_map.insert(i, full_url);
+                    for i in 0..links.length() {
+                        if let Some(link) = links.get(i) {
+                            if let Some(href) = link.attr("href") {
+                                if let Ok(full_url) = resolve_relative_url(&href, &link_page) {
+                                    link_map.insert(i, full_url);
+                                }
                             }
                         }
-                    });
+                    }
                     
                     let mut avatar_map = HashMap::new();
-                    avatars.each(|i, avatar| {
-                        if let Some(src) = avatar.attr("src") {
-                            if let Ok(full_url) = resolve_relative_url(src, link_page) {
-                                avatar_map.insert(i, full_url);
+                    for i in 0..avatars.length() {
+                        if let Some(avatar) = avatars.get(i) {
+                            if let Some(src) = avatar.attr("src") {
+                                if let Ok(full_url) = resolve_relative_url(&src, &link_page) {
+                                    avatar_map.insert(i, full_url);
+                                }
                             }
                         }
-                    });
+                    }
                     
                     // 创建Friends对象
                     let max_index = std::cmp::max(
@@ -116,7 +122,7 @@ pub async fn crawl_post_page(
     
     // 尝试不同主题的CSS选择器规则
     if let Some(theme_rules) = css_rules.get("post_page_rules") {
-        for (theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
+        for (_theme, rules) in theme_rules.as_mapping().unwrap_or(&serde_yaml::Mapping::new()) {
             if let Some(title_selector) = rules["title"].as_str() {
                     let titles = doc.select(title_selector);
                 
@@ -130,24 +136,30 @@ pub async fn crawl_post_page(
                     
                     // 合并数据
                     let mut title_map = HashMap::new();
-                    titles.each(|i, title| {
-                        title_map.insert(i, decode_html_entities(title.text().trim()));
-                    });
+                    for i in 0..titles.length() {
+                        if let Some(title) = titles.get(i) {
+                            title_map.insert(i, decode_html_entities(title.text().trim()));
+                        }
+                    }
                     
                     let mut link_map = HashMap::new();
-                    links.each(|i, link_elem| {
-                        if let Some(href) = link_elem.attr("href") {
-                            if let Ok(full_url) = resolve_relative_url(href, link) {
-                                link_map.insert(i, full_url);
+                    for i in 0..links.length() {
+                        if let Some(link_elem) = links.get(i) {
+                            if let Some(href) = link_elem.attr("href") {
+                                if let Ok(full_url) = resolve_relative_url(&href, link) {
+                                    link_map.insert(i, full_url);
+                                }
                             }
                         }
-                    });
+                    }
                     
                     let mut time_map = HashMap::new();
-                    created_times.each(|i, time_elem| {
-                        let time_str = clean_time_string(time_elem.text().trim());
-                        time_map.insert(i, time_str);
-                    });
+                    for i in 0..created_times.length() {
+                        if let Some(time_elem) = created_times.get(i) {
+                            let time_str = clean_time_string(time_elem.text().trim());
+                            time_map.insert(i, time_str);
+                        }
+                    }
                     
                     // 创建PostMeta对象
                     let max_index = std::cmp::max(
@@ -201,14 +213,21 @@ pub async fn crawl_post_page_feed(
     // 尝试RSS格式
     let items = doc.select("item");
     
-    items.each(|_, item| {
-        let title = item.select("title").text().trim().to_string();
-        let link = item.select("link").text().trim().to_string();
+    // 直接使用选择器获取所有需要的数据，避免处理NodeRef
+    let titles = items.select("title");
+    let links = items.select("link");
+    
+    let max_items = titles.length().min(links.length());
+    
+    for i in 0..max_items {
+        let title = titles.get(i).map(|t| t.text().trim().to_string()).unwrap_or_default();
+        let link = links.get(i).map(|l| l.text().trim().to_string()).unwrap_or_default();
         
         // 尝试不同的时间格式
         let mut created = String::new();
         for time_tag in ["pubDate", "date", "dc:date"] {
-            if let Some(time_elem) = item.select(time_tag).first() {
+            let time_elem = items.select(&format!("item:nth-child({}) {} ", i + 1, time_tag));
+            if time_elem.length() > 0 {
                 created = parse_rss_time(time_elem.text().trim());
                 if !created.is_empty() {
                     break;
@@ -226,7 +245,8 @@ pub async fn crawl_post_page_feed(
         let mut content = String::new();
         // 尝试多种可能的内容标签
         for content_tag in ["content:encoded", "description"] {
-            if let Some(content_elem) = item.select(content_tag).first() {
+            let content_elem = items.select(&format!("item:nth-child({}) {} ", i + 1, content_tag));
+            if content_elem.length() > 0 {
                 content = decode_html_entities(content_elem.text().trim());
                 if !content.is_empty() {
                     break;
@@ -243,7 +263,7 @@ pub async fn crawl_post_page_feed(
                 content, // 添加文章正文内容
             });
         }
-    });
+    }
     
     Ok(posts)
 }
