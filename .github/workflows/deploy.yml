@@ -102,12 +102,3 @@ jobs:
       #       -F "file=@rss.json" \
       #       ${{ secrets.API_ENDPOINT }}
       
-      # 通知（可选，确保设置了正确的secrets）
-      - name: Send notification
-        if: success() || failure()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK || '' }}
-          SLACK_TITLE: "RSS.json Deployment"
-          SLACK_MESSAGE: ${{ job.status == 'success' && '部署成功！' || '部署失败！' }}
-          SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
