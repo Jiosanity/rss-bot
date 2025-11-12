@@ -123,7 +123,7 @@ jobs:
       
       # 通知（可选，只有当设置了SLACK_WEBHOOK时才发送通知）
       - name: Send notification
-        if: (success() || failure()) && secrets.SLACK_WEBHOOK != ''
+        if: always() && secrets.SLACK_WEBHOOK != ''
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
