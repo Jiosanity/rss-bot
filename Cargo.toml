@@ -1,0 +1,25 @@
+[package]
+name = "rss-bot"
+version = "0.1.0"
+authors = ["Your Name <your.email@example.com>"]
+description = "RSS Bot for fetching and processing blog posts"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+yaml-rust = "0.4"
+nipper = "0.11"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+url = "2.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

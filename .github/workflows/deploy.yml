@@ -19,11 +19,25 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
-      # 构建项目
-      - name: Build project
+      # 检查目录结构并构建项目
+      - name: Check directory structure and build project
         run: |
-          cd simple_edition
-          cargo build --release
+          echo "当前工作目录: $(pwd)"
+          ls -la
+          if [ -f "Cargo.toml" ]; then
+            echo "找到Cargo.toml，开始构建..."
+            cargo build --release
+            # 检查构建是否成功
+            if [ $? -eq 0 ]; then
+              echo "构建成功！"
+            else
+              echo "构建失败！"
+              exit 1
+            fi
+          else
+            echo "错误：未找到Cargo.toml文件"
+            exit 1
+          fi
       
       # 配置环境变量（可选，用于RSS源等敏感信息）
       - name: Configure environment
@@ -34,13 +48,11 @@ jobs:
       # 运行程序生成rss.json
       - name: Generate rss.json
         run: |
-          cd simple_edition
           cargo run
       
       # 验证rss.json文件是否生成
       - name: Verify rss.json
         run: |
-          cd simple_edition
           if [ -f "rss.json" ]; then
             echo "rss.json 生成成功"
             ls -la rss.json
@@ -51,16 +63,16 @@ jobs:
       
       # 将rss.json部署到服务器
       # 方法1：使用SCP（需要配置SSH密钥）
-      - name: Deploy to server via SCP
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SERVER_PORT || '22' }}
-          source: simple_edition/rss.json
-          target: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
-          overwrite: true
+      # - name: Deploy to server via SCP
+      #   uses: appleboy/scp-action@master
+      #   with:
+      #     host: ${{ secrets.SERVER_HOST }}
+      #     username: ${{ secrets.SERVER_USERNAME }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: ${{ secrets.SERVER_PORT || '22' }}
+      #     source: rss.json
+      #     target: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
+      #     overwrite: true
       
       # 方法2：使用SFTP（如果服务器支持）
       # - name: Deploy to server via SFTP
@@ -69,7 +81,7 @@ jobs:
       #     username: ${{ secrets.SERVER_USERNAME }}
       #     server: ${{ secrets.SERVER_HOST }}
       #     ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     local_path: simple_edition/rss.json
+      #     local_path: rss.json
       #     remote_path: ${{ secrets.DEPLOY_PATH || '/var/www/html' }}
       
       # 方法3：使用curl上传到API端点
@@ -77,15 +89,15 @@ jobs:
       #   run: |
       #     curl -X POST \
       #       -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
-      #       -F "file=@simple_edition/rss.json" \
+      #       -F "file=@rss.json" \
       #       ${{ secrets.API_ENDPOINT }}
       
-      # 通知（可选）
+      # 通知（可选，确保设置了正确的secrets）
       - name: Send notification
         if: success() || failure()
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK || '' }}
           SLACK_TITLE: "RSS.json Deployment"
           SLACK_MESSAGE: ${{ job.status == 'success' && '部署成功！' || '部署失败！' }}
           SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
